@@ -21,8 +21,11 @@ export const getAPIEndpoint = (net) => {
 export const getRPCEndpoint = (net) => {
   const apiEndpoint = getAPIEndpoint(net);
   return axios.get(apiEndpoint + '/v1/network/best_node').then((response) => {
-      return response.data.node;
-  });
+    console.log(response);
+    if (net === "TestNet"){
+      return "http://seed4.neo.org:20332";
+    }
+    return response.data.node;  });
 };
 
 // wrapper for querying node RPC
