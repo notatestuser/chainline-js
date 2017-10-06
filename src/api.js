@@ -77,6 +77,7 @@ export const doClaimAllGas = (net, fromWif) => {
 export const doInvokeScript = (net, script, parse = true) => {
   return queryRPC(net, 'invokescript', [script])
     .then((response) => {
+      console.log(response)
       if (parse && response.result.state === 'HALT, BREAK') {
         const parsed = parseVMStack(response.result.stack)
         const gasConsumed = parseInt(response.result.gas_consumed, 10)
