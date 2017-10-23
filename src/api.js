@@ -162,6 +162,18 @@ export const doMintTokens = (net, scriptHash, fromWif, neo, gasCost) => {
   })
 }
 
+export const doTestNotify = (net, scriptHash, wif, gasCost = 0, balances) => {
+  const account = getAccountFromWIFKey(wif)
+  const intents = [
+    { assetId: tx.ASSETS['GAS'], value: 0, scriptHash: scriptHash }
+  ]
+  const invoke = { operation: 'test_notify', scriptHash: scriptHash }
+  const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost, { version: 1 })
+  const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
+  const hexTx = tx.serializeTransaction(signedTx)
+  return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
+}
+
 /**
  * Sends a Transaction.
  * @param {string} net - 'MainNet' or 'TestNet'
@@ -187,8 +199,8 @@ export const getAPIEndpoint = (net) => {
 }
 
 /**
- * Get balances of NEO and GAS for an address
- * @param {string} net - 'MainNet' or 'TestNet'.
+ * Get balances of NEO and GAS for an address via the API
+ * @param {string} net - 'MainNet', 'TestNet' or node URL.
  * @param {string} address - Address to check.
  * @return {Promise<Balance>} Balance of address
  */
@@ -201,6 +213,22 @@ export const getBalance = (net, address) => {
       // const gas = res.data.GAS.balance
       // return { Neo: neo, Gas: gas, unspent: { Neo: res.data.NEO.unspent, Gas: res.data.GAS.unspent } }
     })
+}
+
+/**
+ * Get balances of NEO and GAS for an address via node RPC
+ * @param {string} net - 'MainNet', 'TestNet' or node URL.
+ * @param {string} address - Address to check.
+ * @return {Promise<Balance>} Balance of address
+ */
+export const getBalanceOverRpc = (net) => {
+  return Promise.all([
+    queryRPC(net, 'getbalance', [neoId]),
+    queryRPC(net, 'getbalance', [gasId])
+  ]).then((results) => ({
+    [neoId]: parseFloat(results[0].result.Balance) * 100000000,
+    [gasId]: parseFloat(results[1].result.Balance) * 100000000
+  }))
 }
 
 /**
