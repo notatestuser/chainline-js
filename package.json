@@ -3,6 +3,7 @@
     "babel-core": "^6.25.0",
     "babel-loader": "^7.1.1",
     "babel-plugin-transform-object-rest-spread": "^6.23.0",
+    "babel-polyfill": "^6.26.0",
     "babel-preset-env": "^1.5.2",
     "chai": "^4.0.2",
     "chai-as-promised": "^7.1.0",
@@ -35,7 +36,7 @@
     "wif": "^2.0.6"
   },
   "scripts": {
-    "test": "mocha --compilers js:babel-core/register --require ./tests/common.js --recursive ./tests",
+    "test": "mocha --compilers js:babel-core/register --require babel-polyfill --require ./tests/common.js --recursive ./tests",
     "build": "webpack",
     "prepublish": "npm run build",
     "lint": "eslint src/**.js"
