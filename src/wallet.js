@@ -69,6 +69,7 @@ export const createSignatureScript = (publicKeyEncoded) => {
  */
 export const createChainLineWalletScript = (publicKeyEncoded) => {
   if (publicKeyEncoded instanceof ArrayBuffer) publicKeyEncoded = publicKeyEncoded.toString('hex')
+  // wallet revision a6e6bc6a503123fac7542efcbb26da3ab5b01efc
   return '5fc56b6a51527ac46a51c34c097369676e61747572656175754c21' + publicKeyEncoded +
       '6a52527ac44c20e72d286979ee6cb103e65dfddfb2e384100b8d148e7758de42e4168b71792c606' +
       'a53527ac4616168164e656f2e52756e74696d652e4765745472696767657261619c5186009c6307' +
