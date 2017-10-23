@@ -34,7 +34,7 @@ export const addressToScriptHash = (address) => {
  * @return {string} A signed transaction ready to be sent over RPC.
  */
 export const addContract = (txData, sign, publicKeyEncoded) => {
-  let signatureScript = createSignatureScript(publicKeyEncoded)
+  let signatureScript = createChainLineWalletScript(publicKeyEncoded)
   // console.log(signatureScript);
   // sign num
   let data = txData + '01'
@@ -53,13 +53,39 @@ export const addContract = (txData, sign, publicKeyEncoded) => {
 }
 
 /**
- * Create Signature Script
+ * Create a signature script
  * @param {string|ArrayBuffer} publicKeyEncoded - Public Key in encoded form
- * @return {string} Signature Script
+ * @return {string} The signature script
  */
 export const createSignatureScript = (publicKeyEncoded) => {
   if (publicKeyEncoded instanceof ArrayBuffer) publicKeyEncoded = publicKeyEncoded.toString('hex')
   return '21' + publicKeyEncoded + 'ac'
+}
+
+/**
+ * Create a Chain Line wallet verify script
+ * @param {string|ArrayBuffer} publicKeyEncoded - Public Key in encoded form
+ * @return {string} The Chain Line wallet script
+ */
+export const createChainLineWalletScript = (publicKeyEncoded) => {
+  if (publicKeyEncoded instanceof ArrayBuffer) publicKeyEncoded = publicKeyEncoded.toString('hex')
+  return '5fc56b6a51527ac46a51c34c097369676e61747572656175754c21' + publicKeyEncoded +
+      '6a52527ac44c20e72d286979ee6cb103e65dfddfb2e384100b8d148e7758de42e4168b71792c606' +
+      'a53527ac4616168164e656f2e52756e74696d652e4765745472696767657261619c5186009c6307' +
+      '00006c75666a51c36a52c361617c65ed01009e630800006c75666161682953797374656d2e45786' +
+      '5637574696f6e456e67696e652e476574536372697074436f6e7461696e65726a54527ac4616168' +
+      '2d53797374656d2e457865637574696f6e456e67696e652e476574457865637574696e675363726' +
+      '97074486173686a55527ac46a54c376009e630500616161681a4e656f2e5472616e73616374696f' +
+      '6e2e4765744f7574707574736a56527ac4006a5d527ac46a56c36a57527ac4006a58527ac46a58c' +
+      '36a57c3c0a26397006a57c36a58c3c36a59527ac46a59c36a5a527ac46a5ac3616168184e656f2e' +
+      '4f75747075742e476574536372697074486173686a55c3619c009c634c006a5ac3616168154e656' +
+      'f2e4f75747075742e476574417373657449646a53c3619c009c6326006a5dc36a5ac3616168134e' +
+      '656f2e4f75747075742e47657456616c7565936a5d527ac4616a58c351936a58527ac46264ff616' +
+      'a5dc300948d00a1638b006a56c300c3616168184e656f2e4f75747075742e476574536372697074' +
+      '486173686a57527ac44c1377616c6c65745f7265717565737454784f757454c576006a51c3c4765' +
+      '16a52c3c476526a57c3764c09726563697069656e74617575c476536a5dc361c461617c6730a2b0' +
+      '4139d714564eb956896498616cf8acc8db6a58527ac46a58c36c7566516c75666153c56b6a00527' +
+      'ac46a51527ac46a00c36a51c361ac6c756661'
 }
 
 /**
@@ -112,7 +138,7 @@ export const getAccountFromPublicKey = (publicKeyEncoded, privateKey) => {
   const publicKeyHash = getHash(publicKeyEncoded)
   // console.log(publicKeyHash)
 
-  const script = createSignatureScript(publicKeyEncoded)
+  const script = createChainLineWalletScript(publicKeyEncoded)
   // console.log(script)
 
   const programHash = getHash(script)
@@ -242,7 +268,7 @@ export const getScriptHashFromAddress = (address) => {
  * @return {string} scriptHash (BE)
  */
 export const getScriptHashFromPublicKey = (publicKey) => {
-  return getScriptHashFromAddress(toAddress(hexstring2ab(getHash(createSignatureScript(publicKey)))))
+  return getScriptHashFromAddress(toAddress(hexstring2ab(getHash(createChainLineWalletScript(publicKey)))))
 }
 /**
  * Signs a transaction with a private key

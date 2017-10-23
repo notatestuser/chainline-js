@@ -1,5 +1,5 @@
 import { num2VarInt, num2hexstring, StringStream, reverseHex } from '../utils.js'
-import { signatureData, createSignatureScript, getAccountFromPrivateKey } from '../wallet.js'
+import { signatureData, createChainLineWalletScript, getAccountFromPrivateKey } from '../wallet.js'
 import CryptoJS from 'crypto-js'
 import * as comp from './components.js'
 import * as e from './exclusive.js'
@@ -122,7 +122,7 @@ export const deserializeTransaction = (data) => {
  */
 export const signTransaction = (transaction, privateKey) => {
   const invocationScript = '40' + signatureData(serializeTransaction(transaction, false), privateKey)
-  const verificationScript = createSignatureScript(getAccountFromPrivateKey(privateKey).publicKeyEncoded)
+  const verificationScript = createChainLineWalletScript(getAccountFromPrivateKey(privateKey).publicKeyEncoded)
   const witness = { invocationScript, verificationScript }
   transaction.scripts ? transaction.scripts.push(witness) : transaction.scripts = [witness]
   return transaction

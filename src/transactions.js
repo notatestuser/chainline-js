@@ -5,7 +5,7 @@ import {
   reverseArray,
   numStoreInMemory
 } from './utils'
-import { verifyAddress, createSignatureScript, getHash } from './wallet'
+import { verifyAddress, createChainLineWalletScript, getHash } from './wallet'
 
 const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 let base58 = require('base-x')(BASE58)
@@ -20,7 +20,7 @@ let base58 = require('base-x')(BASE58)
  */
 // TODO: Remove toAddress as it is redundant (not used in code).
 export const claimTransaction = (claims, publicKeyEncoded, toAddress, amount) => {
-  let signatureScript = createSignatureScript(publicKeyEncoded)
+  let signatureScript = createChainLineWalletScript(publicKeyEncoded)
   let myProgramHash = getHash(signatureScript)
 
   // Type = ClaimTransaction
@@ -166,7 +166,7 @@ export const transferTransaction = (coins, publicKeyEncoded, toAddress, amount) 
   let programHash = base58.decode(toAddress)
   programHash = programHash.slice(1, 21)
 
-  let signatureScript = createSignatureScript(publicKeyEncoded)
+  let signatureScript = createChainLineWalletScript(publicKeyEncoded)
   let myProgramHash = getHash(signatureScript)
 
   // Construct Inputs
@@ -259,7 +259,7 @@ export const transferTransaction = (coins, publicKeyEncoded, toAddress, amount) 
 // TODO: We many not need to keep this function in the API
 // for now, leaving as reference
 // export const issueTransaction = ($issueAssetID, $issueAmount, $publicKeyEncoded) => {
-//   let signatureScript = createSignatureScript($publicKeyEncoded)
+//   let signatureScript = createChainLineWalletScript($publicKeyEncoded)
 //   // console.log( signatureScript.toString('hex') );
 
 //   let myProgramHash = getHash(signatureScript)
@@ -306,7 +306,7 @@ export const transferTransaction = (coins, publicKeyEncoded, toAddress, amount) 
 //   let curvePtY = curvePt.affineY.toBuffer(32)
 //   // let publicKey = buffer.concat([Buffer.from([0x04]), curvePtX, curvePtY])
 
-//   let signatureScript = createSignatureScript($publicKeyEncoded)
+//   let signatureScript = createChainLineWalletScript($publicKeyEncoded)
 
 //   let myProgramHash = getHash(signatureScript)
 

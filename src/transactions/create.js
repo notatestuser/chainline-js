@@ -73,7 +73,7 @@ export const ContractTx = (publicKey, balances, intents, override = {}) => {
  */
 export const invocationTx = (publicKey, balances, intents, invoke, gasCost, override = {}) => {
   const tx = Object.assign({
-    type: 209,
+    type: 0xd1,
     version: CURRENT_VERSION,
     scripts: []
   }, override)
