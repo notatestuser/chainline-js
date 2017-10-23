@@ -1,6 +1,6 @@
 module.exports = {
   entry: './src/index.js',
-  target: 'node',
+  target: 'web',
   output: {
     path: __dirname,
     filename: './lib/index.js',
@@ -22,6 +22,7 @@ module.exports = {
     ]
   },
   node: {
-    fs: 'empty'
+    fs: 'empty',
+    child_process: 'empty'
   }
 }
