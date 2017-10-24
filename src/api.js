@@ -324,7 +324,7 @@ export const getPrice = (coin = 'NEO', currency = 'usd') => {
         const data = res.data
         if (data.error) throw new Error(data.error)
         const price = data[0][`price_${currency.toLowerCase()}`]
-        if (price) return parseInt(price, 10)
+        if (price) return parseFloat(price)
         else throw new Error(`Something went wrong with the CoinMarketCap API!`)
       })
   } else {
