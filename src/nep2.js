@@ -39,8 +39,8 @@ export const encryptWifAccount = (wif, passphrase) => {
  * @param {string} passphrase - The password.
  * @return {Promise<Account>} A Promise returning an Account object.
  */
-export const generateEncryptedWif = (passphrase) => {
-  const newPrivateKey = generatePrivateKey()
+export const generateEncryptedWif = (passphrase, privateKey) => {
+  const newPrivateKey = privateKey || generatePrivateKey()
   const newWif = getWIFFromPrivateKey(newPrivateKey)
   return encryptWIF(newWif, passphrase).then((encWif) => {
     const loadAccount = getAccountFromWIFKey(newWif)
