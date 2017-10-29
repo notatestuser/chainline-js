@@ -1,5 +1,12 @@
+import ScriptBuilder from './sc/scriptBuilder.js'
+import { getAccountFromWIFKey } from './wallet'
+import { getBalance, queryRPC, doInvokeScript } from './api'
+import { fixed82num } from './utils'
+import * as tx from './transactions/index.js'
+
 export const Constants = {
-  HUB_SCRIPT_HASH: 'xxx'
+  // HubContract revision 795d88a98f01953e0d2c969f049e59b8b514d05d
+  HUB_SCRIPT_HASH: 'fe8ec60d009691abe25ba4050010092e947b735e'
 }
 
 export const generateWalletScript = (publicKeyHex) => `
@@ -21,4 +28,83 @@ export const generateWalletScript = (publicKeyHex) => `
   6e74617575c476536a5dc361c461617c67
   ${Constants.HUB_SCRIPT_HASH}
   6a58527ac46a58c36c7566516c75666153c56b6a00527ac46a51527ac46a00c36a51c361ac6c756661
-`.replace(/[\r\n]/g, '')
+`.replace(/[\r\n\s]/g, '')
+
+// LOCAL INVOKES
+
+export const getReservedGasBalance = (net, wif) => {
+  const account = getAccountFromWIFKey(wif)
+  const sb = new ScriptBuilder()
+  sb.emitAppCall(
+    Constants.HUB_SCRIPT_HASH,
+    'wallet_getReservedGasBalance',
+    [account.programHash])
+  const script = sb.str
+  return doInvokeScript(net, script, false)
+    .then((res) => {
+      const reservedBalance = (fixed82num(res.stack[0].value))
+      return { reservedBalance }
+    })
+}
+
+// BLOCKCHAIN INVOKES
+
+export const openDemand = (net, wif, {
+  expiry,      // expiry: BigInteger
+  repRequired, // repRequired: BigInteger
+  itemSize,    // itemSize: BigInteger
+  itemValue,   // itemValue: BigInteger
+  infoBlob,    // infoBlob: ByteArray
+  pickUpCity,  // pickUpCityHash: Hash160
+  dropOffCity  // dropOffCityHash: Hash160
+}) => {
+  const gasCost = 0
+  const account = getAccountFromWIFKey(wif)
+  return getBalance(net, account.address).then((balances) => {
+    const invoke = {
+      scriptHash: Constants.HUB_SCRIPT_HASH,
+      operation: 'demand_open',
+      args: [
+        // owner: ScriptHash
+        account.programHash,
+        // publicKey
+        account.publicKeyEncoded,
+        // all the rest
+        expiry, repRequired, itemSize, itemValue, infoBlob, pickUpCity, dropOffCity
+      ]
+    }
+    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, [], invoke, gasCost, { version: 1 })
+    const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
+    const hexTx = tx.serializeTransaction(signedTx)
+    return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
+  })
+}
+
+export const openTravel = (net, wif, {
+  expiry,      // expiry: BigInteger
+  repRequired, // repRequired: BigInteger
+  itemSize,    // carrySpace: BigInteger
+  pickUpCity,  // pickUpCityHash: Hash160
+  dropOffCity  // dropOffCityHash: Hash160
+}) => {
+  const gasCost = 0
+  const account = getAccountFromWIFKey(wif)
+  return getBalance(net, account.address).then((balances) => {
+    const invoke = {
+      scriptHash: Constants.HUB_SCRIPT_HASH,
+      operation: 'demand_open',
+      args: [
+        // owner: ScriptHash
+        account.programHash,
+        // publicKey
+        account.publicKeyEncoded,
+        // all the rest
+        expiry, repRequired, itemSize, pickUpCity, dropOffCity
+      ]
+    }
+    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, [], invoke, gasCost, { version: 1 })
+    const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
+    const hexTx = tx.serializeTransaction(signedTx)
+    return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
+  })
+}
