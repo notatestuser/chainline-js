@@ -1,10 +1,12 @@
 import ScriptBuilder from './sc/scriptBuilder.js'
 import { getAccountFromWIFKey } from './wallet'
-import { getBalance, queryRPC, doInvokeScript } from './api'
+import { getBalance, queryRPC, doInvokeScript, parseVMStack } from './api'
 import { fixed82num } from './utils'
 import * as tx from './transactions/index.js'
 
 export const Constants = {
+  MAIN_NET: 'MainNet',
+  TEST_NET: 'TestNet',
   // HubContract commit 795d88a98f01953e0d2c969f049e59b8b514d05d (hub-0.2)
   HUB_SCRIPT_HASH: '571608ac8b5fbf410bd0911039c35508b5e42706'
 }
@@ -33,19 +35,31 @@ export const generateWalletScript = (publicKeyHex) => `
 
 // LOCAL INVOKES
 
-export const getReservedGasBalance = (net, wif) => {
+export const getStats = async (net, wif) => {
+  const scriptHash = Constants.HUB_SCRIPT_HASH
+  const sb = new ScriptBuilder()
+  sb.emitAppCall(scriptHash, 'stats_getDemandsCount')
+    .emitAppCall(scriptHash, 'stats_getCityUsageCount')
+    .emitAppCall(scriptHash, 'stats_getReservedFundsCount')
+  const res = await doInvokeScript(net, sb.str, false)
+  const [demands, cities, funds] = parseVMStack(res.stack.slice(0, 3))
+  return { demands, cities, funds }
+}
+
+export const getReservedGasBalance = async (net, wif) => {
   const account = getAccountFromWIFKey(wif)
   const sb = new ScriptBuilder()
   sb.emitAppCall(
     Constants.HUB_SCRIPT_HASH,
     'wallet_getReservedGasBalance',
     [account.programHash])
-  const script = sb.str
-  return doInvokeScript(net, script, false)
-    .then((res) => {
-      const reservedBalance = (fixed82num(res.stack[0].value))
-      return { reservedBalance }
-    })
+  const res = await doInvokeScript(net, sb.str, false)
+  const val = res.stack[0].value
+  let reservedBalance = 0
+  if (typeof val === 'string' && val.length) {
+    reservedBalance = fixed82num(res.stack[0].value)
+  }
+  return { reservedBalance }
 }
 
 // BLOCKCHAIN INVOKES
