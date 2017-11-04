@@ -118,10 +118,12 @@ export const deserializeTransaction = (data) => {
  * Signs a transaction with the corresponding privateKey. We are dealing with it as an Transaction object as multi-sig transactions require us to sign the transaction without signatures.
  * @param {Object} transaction - Transaction as an object
  * @param {string} privateKey - The private key. This method does not check if the private key is valid (aka that the inputs come from the corresponding address)
+ * @param {string} serializedTx - An optional serialized form of the transaction, supplied if pre-computed.
  * @return {Object} Signed transaction as an object.
  */
-export const signTransaction = (transaction, privateKey) => {
-  const invocationScript = '40' + signatureData(serializeTransaction(transaction, false), privateKey)
+export const signTransaction = (transaction, privateKey, serializedTx) => {
+  const serialized = serializedTx || serializeTransaction(transaction, false)
+  const invocationScript = '40' + signatureData(serialized, privateKey)
   const verificationScript = createChainLineWalletScript(getAccountFromPrivateKey(privateKey).publicKeyEncoded)
   const witness = { invocationScript, verificationScript }
   transaction.scripts ? transaction.scripts.push(witness) : transaction.scripts = [witness]

@@ -3,6 +3,7 @@ import {
   hexstring2ab,
   ab2hexstring,
   reverseArray,
+  reverseHex,
   numStoreInMemory
 } from './utils'
 import { verifyAddress, createChainLineWalletScript, getHash } from './wallet'
@@ -148,7 +149,7 @@ export const getTxHash = (serializedTx) => {
   const txHexString = CryptoJS.enc.Hex.parse(serializedTx)
   const txSha256 = CryptoJS.SHA256(txHexString)
   const txHash = CryptoJS.SHA256(txSha256)
-  return txHash.toString()
+  return reverseHex(txHash.toString())
 }
 
 /**

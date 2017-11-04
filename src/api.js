@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { getAccountFromWIFKey, getScriptHashFromAddress } from './wallet'
 import * as tx from './transactions/index.js'
+import { getTxHash } from './transactions'
 import { hexstring2ab, ab2str } from './utils'
 
 import _ from 'lodash'
@@ -77,7 +78,7 @@ export const doClaimAllGas = (net, fromWif) => {
 export const doInvokeScript = (net, script, parse = true) => {
   return queryRPC(net, 'invokescript', [script])
     .then((response) => {
-      console.log(response)
+      console.debug('RPC response:', response)
       if (parse && response.result.state === 'HALT, BREAK') {
         const parsed = parseVMStack(response.result.stack)
         const gasConsumed = parseInt(response.result.gas_consumed, 10)
@@ -133,9 +134,11 @@ export const doSendAsset = (net, toAddress, fromWif, assetAmounts) => {
       return { assetId: tx.ASSETS[k], value: v, scriptHash: toScriptHash }
     })
     const unsignedTx = tx.create.contract(account.publicKeyEncoded, balances, intents)
-    const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
+    const hexUnsignedTx = tx.serializeTransaction(unsignedTx, false)
+    const signedTx = tx.signTransaction(unsignedTx, account.privateKey, hexUnsignedTx)
     const hexTx = tx.serializeTransaction(signedTx)
     return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
+      .then((result) => ({ ...result, hash: getTxHash(hexUnsignedTx) }))
   })
 }
 
