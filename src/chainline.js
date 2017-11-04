@@ -65,16 +65,20 @@ export const openDemand = (net, wif, {
     const invoke = {
       scriptHash: Constants.HUB_SCRIPT_HASH,
       operation: 'demand_open',
-      args: [
+      args: [[
         // owner: ScriptHash
         account.programHash,
         // publicKey
         account.publicKeyEncoded,
         // all the rest
         expiry, repRequired, itemSize, itemValue, infoBlob, pickUpCity, dropOffCity
-      ]
+      ]]
     }
-    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, [], invoke, gasCost, { version: 1 })
+    const intents = [
+      // sending a non-zero value makes tx validation go through
+      { assetId: tx.ASSETS['GAS'], value: 0.00000001, scriptHash: account.programHash }
+    ]
+    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost, { version: 1 })
     const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
     const hexTx = tx.serializeTransaction(signedTx)
     return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
@@ -93,7 +97,7 @@ export const openTravel = (net, wif, {
   return getBalance(net, account.address).then((balances) => {
     const invoke = {
       scriptHash: Constants.HUB_SCRIPT_HASH,
-      operation: 'demand_open',
+      operation: 'travel_open',
       args: [
         // owner: ScriptHash
         account.programHash,
