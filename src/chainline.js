@@ -35,7 +35,7 @@ export const generateWalletScript = (publicKeyHex) => `
 
 // LOCAL INVOKES
 
-export const getStats = async (net, wif) => {
+export const getStats = async (net) => {
   const scriptHash = Constants.HUB_SCRIPT_HASH
   const sb = new ScriptBuilder()
   sb.emitAppCall(scriptHash, 'stats_getDemandsCount')
