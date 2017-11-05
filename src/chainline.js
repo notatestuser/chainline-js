@@ -93,10 +93,10 @@ export const openDemand = (net, wif, {
       ]]
     }
     const intents = [
-      // sending a non-zero value makes tx validation go through
+      // a non-zero value in outputs makes tx validation go through
       { assetId: tx.ASSETS['GAS'], value: 0.00000001, scriptHash: account.programHash }
     ]
-    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost, { version: 1 })
+    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost)
     const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
     const hexTx = tx.serializeTransaction(signedTx)
     return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
@@ -106,7 +106,7 @@ export const openDemand = (net, wif, {
 export const openTravel = (net, wif, {
   expiry,      // expiry: BigInteger
   repRequired, // repRequired: BigInteger
-  itemSize,    // carrySpace: BigInteger
+  carrySpace,    // carrySpace: BigInteger
   pickUpCity,  // pickUpCityHash: Hash160
   dropOffCity  // dropOffCityHash: Hash160
 }) => {
@@ -122,10 +122,14 @@ export const openTravel = (net, wif, {
         // publicKey
         account.publicKeyEncoded,
         // all the rest
-        expiry, repRequired, itemSize, pickUpCity, dropOffCity
+        expiry, repRequired, carrySpace, pickUpCity, dropOffCity
       ]
     }
-    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, [], invoke, gasCost, { version: 1 })
+    const intents = [
+      // a non-zero value in outputs makes tx validation go through
+      { assetId: tx.ASSETS['GAS'], value: 0.00000001, scriptHash: account.programHash }
+    ]
+    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost)
     const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
     const hexTx = tx.serializeTransaction(signedTx)
     return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
