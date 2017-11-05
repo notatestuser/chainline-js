@@ -5,8 +5,12 @@ import { fixed82num } from './utils'
 import * as tx from './transactions/index.js'
 
 export const Constants = {
+  // Nets
   MAIN_NET: 'MainNet',
   TEST_NET: 'TestNet',
+  // Fees
+  FEE_DEMAND_REWARD_GAS: 3,
+  FEE_TRAVEL_DEPOSIT_GAS: 1,
   // HubContract commit 795d88a98f01953e0d2c969f049e59b8b514d05d (hub-0.2)
   HUB_SCRIPT_HASH: '571608ac8b5fbf410bd0911039c35508b5e42706'
 }
