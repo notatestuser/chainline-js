@@ -93,7 +93,7 @@ export const openDemand = (net, wif, {
       // a non-zero value in outputs makes tx validation go through
       { assetId: tx.ASSETS['GAS'], value: 0.00000001, scriptHash: account.programHash }
     ]
-    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost)
+    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost, { version: 1 })
     const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
     const hexTx = tx.serializeTransaction(signedTx)
     return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
@@ -126,7 +126,7 @@ export const openTravel = (net, wif, {
       // a non-zero value in outputs makes tx validation go through
       { assetId: tx.ASSETS['GAS'], value: 0.00000001, scriptHash: account.programHash }
     ]
-    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost)
+    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost, { version: 1 })
     const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
     const hexTx = tx.serializeTransaction(signedTx)
     return queryRPC(net, 'sendrawtransaction', [hexTx], 4)

@@ -71,7 +71,7 @@ export const ContractTx = (publicKey, balances, intents, override = {}) => {
  * @param {Object} [override={}] - Optional overrides (eg.custom versions)
  * @return {string} Unsigned Transaction
  */
-export const invocationTx = (publicKey, balances, intents, invoke, gasCost, override = { version: 1 }) => {
+export const invocationTx = (publicKey, balances, intents, invoke, gasCost, override = {}) => {
   const tx = Object.assign({
     type: 0xd1,
     version: CURRENT_VERSION,
