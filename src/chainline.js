@@ -1,3 +1,4 @@
+import CryptoJS from 'crypto-js'
 import ScriptBuilder from './sc/scriptBuilder.js'
 import { getAccountFromWIFKey } from './wallet'
 import { getBalance, queryRPC, doInvokeScript, parseVMStack } from './api'
@@ -34,13 +35,18 @@ export const generateWalletScript = (publicKeyHex) => (
   6c7566516c75666153c56b6a00527ac46a51527ac46a00c36a51c361ac6c756661
 `.replace(/[\r\n\s]/g, ''))
 
+// UTILS
+
+export const makeCityPairHash = (pickUpCity, dropOffCity) =>
+  CryptoJS.RIPEMD160(Constants.HUB_SCRIPT_HASH + pickUpCity + dropOffCity).toString()
+
 // LOCAL INVOKES
 
 export const getStats = async (net) => {
   const scriptHash = Constants.HUB_SCRIPT_HASH
   const sb = new ScriptBuilder()
   sb.emitAppCall(scriptHash, 'stats_getDemandsCount')
-    .emitAppCall(scriptHash, 'stats_getCityUsageCount')
+    .emitAppCall(scriptHash, 'stats_getRouteUsageCount')
     .emitAppCall(scriptHash, 'stats_getReservedFundsCount')
   const res = await doInvokeScript(net, sb.str, false)
   const [demands, cities, funds] = parseVMStack(res.stack.slice(0, 3))
@@ -71,7 +77,7 @@ export const openDemand = (net, wif, {
   itemSize,    // itemSize: BigInteger
   itemValue,   // itemValue: BigInteger
   infoBlob,    // infoBlob: ByteArray
-  pickUpCity,  // pickUpCityHash: Hash160
+  pickUpCity,  // pickUpCityHash: Hash160, these are converted to a hashed "pair"
   dropOffCity  // dropOffCityHash: Hash160
 }) => {
   const gasCost = 0
@@ -86,12 +92,13 @@ export const openDemand = (net, wif, {
         // publicKey
         account.publicKeyEncoded,
         // all the rest
-        expiry, repRequired, itemSize, itemValue, infoBlob, pickUpCity, dropOffCity
+        expiry, repRequired, itemSize, itemValue, infoBlob,
+        makeCityPairHash(pickUpCity, dropOffCity)
       ]]
     }
     const intents = [
       // a non-zero value in outputs makes tx validation go through
-      { assetId: tx.ASSETS['GAS'], value: 0.00000001, scriptHash: account.programHash }
+      { assetId: tx.ASSETS['GAS'], value: 0.001, scriptHash: account.programHash }
     ]
     const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost, { version: 1 })
     const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
@@ -103,7 +110,7 @@ export const openDemand = (net, wif, {
 export const openTravel = (net, wif, {
   expiry,      // expiry: BigInteger
   repRequired, // repRequired: BigInteger
-  carrySpace,    // carrySpace: BigInteger
+  carrySpace,  // carrySpace: BigInteger
   pickUpCity,  // pickUpCityHash: Hash160
   dropOffCity  // dropOffCityHash: Hash160
 }) => {
@@ -119,12 +126,13 @@ export const openTravel = (net, wif, {
         // publicKey
         account.publicKeyEncoded,
         // all the rest
-        expiry, repRequired, carrySpace, pickUpCity, dropOffCity
+        expiry, repRequired, carrySpace,
+        makeCityPairHash(pickUpCity, dropOffCity)
       ]]
     }
     const intents = [
       // a non-zero value in outputs makes tx validation go through
-      { assetId: tx.ASSETS['GAS'], value: 0.00000001, scriptHash: account.programHash }
+      { assetId: tx.ASSETS['GAS'], value: 0.001, scriptHash: account.programHash }
     ]
     const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost, { version: 1 })
     const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
