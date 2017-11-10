@@ -51,6 +51,29 @@ export const generateWalletScript = (publicKeyHex) => (
 const makeCityPairHash = (pickUpCity, dropOffCity) =>
   CryptoJS.RIPEMD160(Constants.HUB_SCRIPT_HASH + pickUpCity + dropOffCity).toString()
 
+/**
+ * Parses a fixed8 VM return value into a floating point.
+ * @param {number} The parsed floating point value.
+ */
+const parseReservedBalance = (stackItem) => {
+  const val = stackItem.value
+  let reservedBalance = 0
+  if (typeof val === 'string' && val.length) {
+    reservedBalance = fixed82num(val)
+  }
+  return reservedBalance
+}
+
+/**
+ * Parses an integer VM return value into a JS integer.
+ * @param {number} The parsed integer value.
+ */
+const parseReputationScore = (stackItem) => {
+  let reputation = Number.parseInt(stackItem.value, 10)
+  if (Number.isNaN(reputation)) reputation = 0
+  return reputation
+}
+
 // LOCAL INVOKES
 
 /**
@@ -68,7 +91,7 @@ export const getTimestamp = async (net) => {
 }
 
 /**
- * Gets all the contract's stats in one object.
+ * Gets all the global stats recorded by the contract in one object.
  * @param {string} net - 'MainNet' or 'TestNet' or custom URL
  * @return {{demands: number, cities: number, funds: number}} Stats
  */
@@ -84,25 +107,96 @@ export const getStats = async (net) => {
 }
 
 /**
- * Gets all the contract's stats in one object.
+ * Retrieves a wallet's state attributes (reserved balance and reputation score) in one invoke run.
+ * @param {string} net 'MainNet' or 'TestNet' or custom URL
+ * @param {string} wif The wallet's wif key
+ * @param {{reservedBalance: number, reputation: number}} The wallet's reserved balance (floating point) and reputation score (int)
+ */
+export const getWalletState = async (net, wif, userScriptHash) => {
+  const scriptHash = Constants.HUB_SCRIPT_HASH
+  const sb = new ScriptBuilder()
+  sb.emitAppCall(scriptHash, 'wallet_getReservedGasBalance', [userScriptHash])
+    .emitAppCall(scriptHash, 'stats_getUserReputationScore', [userScriptHash])
+  const res = await doInvokeScript(net, sb.str, false)
+  const reservedBalance = parseReservedBalance(res.stack[0])
+  const reputation = parseReputationScore(res.stack[1])
+  return { reservedBalance, reputation }
+}
+
+/**
+ * Gets a wallet's reserved GAS balance.
  * @param {string} net - 'MainNet' or 'TestNet' or custom URL
  * @param {string} wif - The wallet's WIF key
  * @return {number} Reserved GAS as a floating point
  */
 export const getReservedGasBalance = async (net, wif) => {
+  const scriptHash = Constants.HUB_SCRIPT_HASH
   const account = getAccountFromWIFKey(wif)
   const sb = new ScriptBuilder()
-  sb.emitAppCall(
-    Constants.HUB_SCRIPT_HASH,
-    'wallet_getReservedGasBalance',
-    [account.programHash])
+  sb.emitAppCall(scriptHash, 'wallet_getReservedGasBalance', [account.programHash])
   const res = await doInvokeScript(net, sb.str, false)
-  const val = res.stack[0].value
-  let reservedBalance = 0
-  if (typeof val === 'string' && val.length) {
-    reservedBalance = fixed82num(res.stack[0].value)
-  }
-  return { reservedBalance }
+  return { reservedBalance: parseReservedBalance(res.stack[0]) }
+}
+
+/**
+ * Gets a wallet's user reputation score.
+ * @param {string} net - 'MainNet' or 'TestNet' or custom URL
+ * @param {string} userScriptHash - The user's script hash to look up
+ * @return {number} The user's reputation score as a zero-based positive integer
+ */
+export const getUserReputationScore = async (net, userScriptHash) => {
+  const scriptHash = Constants.HUB_SCRIPT_HASH
+  const sb = new ScriptBuilder()
+  sb.emitAppCall(scriptHash, 'stats_getUserReputationScore', [userScriptHash])
+  const res = await doInvokeScript(net, sb.str, false)
+  return { score: parseReputationScore(res.stack[0]) }
+}
+
+/**
+ * Retrieves an object from the contract by ID (essentially a Storage.get)
+ * @param {string} net - 'MainNet' or 'TestNet' or custom URL
+ * @param {string} id - The ID of the object, provided by either openDemand or openTravel
+ * @return {string|boolean} The retrieved object, hex encoded, or false on failure
+ */
+export const getObjectById = async (net, id) => {
+  const scriptHash = Constants.HUB_SCRIPT_HASH
+  const sb = new ScriptBuilder()
+  sb.emitAppCall(scriptHash, 'storage_get', [id])
+  const res = await doInvokeScript(net, sb.str, false)
+  const [retrieved] = parseVMStack(res.stack)
+  return retrieved || false
+}
+
+/**
+ * Retrieves the Travel object matched with a Demand and the time they were matched at.
+ * @param {string} net - 'MainNet' or 'TestNet' or custom URL
+ * @param {string} demand - The entire Demand object, hex encoded
+ * @return {{travel: string, matchTime: number}|boolean} The matched Travel object, hex encoded, and match time (epoch secs) or false if unmatched
+ */
+export const getDemandTravelMatch = async (net, demand) => {
+  const scriptHash = Constants.HUB_SCRIPT_HASH
+  const sb = new ScriptBuilder()
+  sb.emitAppCall(scriptHash, 'demand_getTravelMatch', [demand])
+    .emitAppCall(scriptHash, 'demand_getTravelMatchedAtTime', [demand])
+  const res = await doInvokeScript(net, sb.str, false)
+  const [travel, matchTime] = parseVMStack(res.stack)
+  return travel ? { travel, matchTime } : false
+}
+
+/**
+ * Retrieves the Demand object matched with a Travel and the time they were matched at.
+ * @param {string} net - 'MainNet' or 'TestNet' or custom URL
+ * @param {string} travel - The entire Travel object, hex encoded
+ * @return {{demand: string, matchTime: number}|boolean} The matched Demand object, hex encoded, and match time (epoch secs) or false if unmatched
+ */
+export const getTravelDemandMatch = async (net, travel) => {
+  const scriptHash = Constants.HUB_SCRIPT_HASH
+  const sb = new ScriptBuilder()
+  sb.emitAppCall(scriptHash, 'travel_getDemandMatch', [travel])
+    .emitAppCall(scriptHash, 'travel_getDemandMatchedAtTime', [travel])
+  const res = await doInvokeScript(net, sb.str, false)
+  const [demand, matchTime] = parseVMStack(res.stack)
+  return demand ? { demand, matchTime } : false
 }
 
 // BLOCKCHAIN INVOKES

@@ -35,9 +35,11 @@ export const ab2hexstring = arr => {
  * @param {number} mNumber
  * @returns {string}
  */
-export const int2hex = mNumber => {
+export const int2hex = (mNumber, reverse = false) => {
   let h = mNumber.toString(16)
-  return h.length % 2 ? '0' + h : h
+  let hex = h.length % 2 ? '0' + h : h
+  if (reverse) hex = reverseHex(hex)
+  return hex
 }
 
 /**
