@@ -253,6 +253,7 @@ export const getClaimAmounts = (net, address) => {
  * @return {Promise<string>} The URL of the best performing node or the custom URL provided.
  */
 export const getRPCEndpoint = (net) => {
+  if (net === 'PrivNet') return Promise.resolve('http://192.168.1.33:20332')
   if (net !== 'TestNet' && net !== 'MainNet') return Promise.resolve(net)
   const apiEndpoint = getAPIEndpoint(net)
   return axios.get(apiEndpoint + '/v2/network/best_node').then((response) => {
