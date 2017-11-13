@@ -1,8 +1,8 @@
 import CryptoJS from 'crypto-js'
-import ScriptBuilder from './sc/scriptBuilder.js'
+import ScriptBuilder, { buildScript } from './sc/scriptBuilder.js'
 import { getAccountFromWIFKey } from './wallet'
 import { getBalance, queryRPC, doInvokeScript, parseVMStack } from './api'
-import { fixed82num, int2hex } from './utils'
+import { fixed82num, int2hex, reverseHex } from './utils'
 import * as tx from './transactions/index.js'
 
 export const Constants = {
@@ -103,14 +103,14 @@ export const getStats = async (net) => {
     .emitAppCall(scriptHash, 'stats_getRouteUsageCount')
     .emitAppCall(scriptHash, 'stats_getReservedFundsCount')
   const res = await doInvokeScript(net, sb.str, false)
-  const [demands, cities, funds] = parseVMStack(res.stack.slice(0, 3))
-  return { demands, cities, funds: funds / 100000000 }
+  const [demands, routes, funds] = parseVMStack(res.stack.slice(0, 3))
+  return { demands, routes, funds: funds / 100000000 }
 }
 
 /**
  * Retrieves a wallet's state attributes (reserved balance and reputation score) in one invoke run.
- * @param {string} net 'MainNet' or 'TestNet' or custom URL
- * @param {string} wif The wallet's wif key
+ * @param {string} net - 'MainNet' or 'TestNet' or custom URL
+ * @param {string} wif - The wallet's wif key
  * @param {{reservedBalance: number, reputation: number}} The wallet's reserved balance (floating point) and reputation score (int)
  */
 export const getWalletState = async (net, wif, userScriptHash) => {
@@ -203,11 +203,13 @@ export const getTravelDemandMatch = async (net, travel) => {
 // BLOCKCHAIN INVOKES
 
 /**
- * Opens a demand via a blockchain invocation.
+ * Opens a Demand via a blockchain or local invocation.
  * @param {string} net - 'MainNet' or 'TestNet' or custom URL
  * @param {string} wif - The wallet's WIF key
  * @param {{expiry: number, repRequired: number, itemSize: number, itemValue: number, infoBlob: string, pickUpCity: string, dropOffCity: string}}
- * @return {{shortId: string, longId: string}|boolean} The demand's tracking IDs or false on failure
+ * @param {boolean} sendTx - Set to true to perform a blockchain invoke (invocation transaction), otherwise it will execute locally
+ * @param {number} gas - The amount of GAS to send in the transaction's inputs (if applicable)
+ * @return {{result: boolean, gasConsumed?: number, success?: boolean}} The result, amount of GAS consumed (if local invoke) and return value
  */
 export const openDemand = async (net, wif, {
   expiry,      // expiry: BigInteger
@@ -215,79 +217,92 @@ export const openDemand = async (net, wif, {
   itemSize,    // itemSize: BigInteger
   itemValue,   // itemValue: BigInteger
   infoBlob,    // infoBlob: ByteArray
-  pickUpCity,  // pickUpCityHash: Hash160, these are converted to a hashed "pair"
-  dropOffCity  // dropOffCityHash: Hash160
-}) => {
-  const gasCost = 0
+  pickUpCity,  // pickUpCity: Hash160, these are converted to a hashed "pair"
+  dropOffCity  // dropOffCity: Hash160
+}, sendTx = false, gas = 0.001) => {
   const account = getAccountFromWIFKey(wif)
+  const itemValueFixed8 = Math.ceil(itemValue * 100000000)  // satoshi ceil
   const cityPairHash = makeCityPairHash(pickUpCity, dropOffCity)
-  const balances = await getBalance(net, account.address)
   const invoke = {
     scriptHash: Constants.HUB_SCRIPT_HASH,
     operation: 'demand_open',
-    args: [[
+    args: [
       // owner: ScriptHash
+      // already little endian
       account.programHash,
       // publicKey
       account.publicKeyEncoded,
       // all the rest
-      expiry, repRequired, itemSize, itemValue, infoBlob, cityPairHash
-    ]]
+      expiry, repRequired, itemSize, itemValueFixed8, infoBlob, cityPairHash
+    ]
   }
-  const intents = [
-    // a non-zero value in outputs makes tx validation go through
-    { assetId: tx.ASSETS['GAS'], value: 0.001, scriptHash: account.programHash }
-  ]
-  const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost, { version: 1 })
-  const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
-  const hexTx = tx.serializeTransaction(signedTx)
-  const { result } = await queryRPC(net, 'sendrawtransaction', [hexTx], 4)
-  if (!result) return false
-  const blockTime = await getTimestamp(net)
-  const shortId = int2hex(blockTime, true) + int2hex(expiry, true) + '01'
-  return { shortId, longId: shortId + cityPairHash }
+  const script = buildScript(invoke)
+  if (sendTx) {
+    const balances = await getBalance(net, account.address)
+    const intents = [
+      // a non-zero value in outputs makes tx validation go through
+      { assetId: tx.ASSETS['GAS'], value: 0, scriptHash: account.programHash }
+    ]
+    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, script, gas, { version: 1 })
+    const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
+    const hexTx = tx.serializeTransaction(signedTx)
+    return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
+  }
+  const res = await doInvokeScript(net, script, false)
+  if (res.state && res.state.startsWith('HALT')) {
+    const success = res.stack && res.stack.length && res.stack[0].value !== ''
+    return { result: true, gasConsumed: res.gas_consumed, success }
+  }
+  return { result: false }
 }
 
 /**
- * Opens a travel via a blockchain invocation.
+ * Opens a Travel via a blockchain or local invocation.
  * @param {string} net - 'MainNet' or 'TestNet' or custom URL
  * @param {string} wif - The wallet's WIF key
  * @param {{expiry: number, repRequired: number, carrySpace: number, pickUpCity: string, dropOffCity: string}}
- * @return {{shortId: string, longId: string}|boolean} The demand's tracking IDs or false on failure
+ * @param {boolean} sendTx - Set to true to perform a blockchain invoke (invocation transaction), otherwise it will execute locally
+ * @param {number} gas - The amount of GAS to send in the transaction's inputs (if applicable)
+ * @return {{result: boolean, gasConsumed?: number, success?: boolean}} The result, amount of GAS consumed (if local invoke) and return value
  */
 export const openTravel = async (net, wif, {
   expiry,      // expiry: BigInteger
   repRequired, // repRequired: BigInteger
   carrySpace,  // carrySpace: BigInteger
-  pickUpCity,  // pickUpCityHash: Hash160
-  dropOffCity  // dropOffCityHash: Hash160
-}) => {
-  const gasCost = 0
+  pickUpCity,  // pickUpCity: Hash160
+  dropOffCity  // dropOffCity: Hash160
+}, sendTx = false, gas = 0.001) => {
   const account = getAccountFromWIFKey(wif)
   const cityPairHash = makeCityPairHash(pickUpCity, dropOffCity)
-  const balances = await getBalance(net, account.address)
   const invoke = {
     scriptHash: Constants.HUB_SCRIPT_HASH,
     operation: 'travel_open',
-    args: [[
+    args: [
       // owner: ScriptHash
+      // already little endian
       account.programHash,
       // publicKey
       account.publicKeyEncoded,
       // all the rest
       expiry, repRequired, carrySpace, cityPairHash
-    ]]
+    ]
   }
-  const intents = [
-    // a non-zero value in outputs makes tx validation go through
-    { assetId: tx.ASSETS['GAS'], value: 0.001, scriptHash: account.programHash }
-  ]
-  const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, invoke, gasCost, { version: 1 })
-  const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
-  const hexTx = tx.serializeTransaction(signedTx)
-  const { result } = await queryRPC(net, 'sendrawtransaction', [hexTx], 4)
-  if (!result) return false
-  const blockTime = await getTimestamp(net)
-  const shortId = int2hex(blockTime, true) + int2hex(expiry, true) + '02'
-  return { shortId, longId: shortId + cityPairHash }
+  const script = buildScript(invoke)
+  if (sendTx) {
+    const balances = await getBalance(net, account.address)
+    const intents = [
+      // a non-zero value in outputs makes tx validation go through
+      { assetId: tx.ASSETS['GAS'], value: 0, scriptHash: account.programHash }
+    ]
+    const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, script, gas, { version: 1 })
+    const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
+    const hexTx = tx.serializeTransaction(signedTx)
+    return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
+  }
+  const res = await doInvokeScript(net, script, false)
+  if (res.state && res.state.startsWith('HALT')) {
+    const success = res.stack && res.stack.length && res.stack[0].value !== ''
+    return { result: true, gasConsumed: res.gas_consumed, success }
+  }
+  return { result: false }
 }
