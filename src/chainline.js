@@ -219,7 +219,7 @@ export const openDemand = async (net, wif, {
   infoBlob,    // infoBlob: ByteArray
   pickUpCity,  // pickUpCity: Hash160, these are converted to a hashed "pair"
   dropOffCity  // dropOffCity: Hash160
-}, sendTx = false, gas = 0.001) => {
+}, sendTx = false, gas = 0) => {
   const account = getAccountFromWIFKey(wif)
   const itemValueFixed8 = Math.ceil(itemValue * 100000000)  // satoshi ceil
   const cityPairHash = makeCityPairHash(pickUpCity, dropOffCity)
@@ -241,7 +241,7 @@ export const openDemand = async (net, wif, {
     const balances = await getBalance(net, account.address)
     const intents = [
       // a non-zero value in outputs makes tx validation go through
-      { assetId: tx.ASSETS['GAS'], value: 0, scriptHash: account.programHash }
+      { assetId: tx.ASSETS['GAS'], value: 0.001, scriptHash: account.programHash }
     ]
     const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, script, gas, { version: 1 })
     const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
@@ -271,7 +271,7 @@ export const openTravel = async (net, wif, {
   carrySpace,  // carrySpace: BigInteger
   pickUpCity,  // pickUpCity: Hash160
   dropOffCity  // dropOffCity: Hash160
-}, sendTx = false, gas = 0.001) => {
+}, sendTx = false, gas = 0) => {
   const account = getAccountFromWIFKey(wif)
   const cityPairHash = makeCityPairHash(pickUpCity, dropOffCity)
   const invoke = {
@@ -292,7 +292,7 @@ export const openTravel = async (net, wif, {
     const balances = await getBalance(net, account.address)
     const intents = [
       // a non-zero value in outputs makes tx validation go through
-      { assetId: tx.ASSETS['GAS'], value: 0, scriptHash: account.programHash }
+      { assetId: tx.ASSETS['GAS'], value: 0.001, scriptHash: account.programHash }
     ]
     const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, script, gas, { version: 1 })
     const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
