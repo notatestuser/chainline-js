@@ -60,7 +60,7 @@ const parseReservedBalance = (stackItem) => {
   const val = stackItem.value
   let reservedBalance = 0
   if (typeof val === 'string' && val.length) {
-    reservedBalance = fixed82num(val)
+    reservedBalance = Number.parseInt(val, 10)
   }
   return reservedBalance
 }
@@ -103,8 +103,12 @@ export const getStats = async (net) => {
     .emitAppCall(scriptHash, 'stats_getRouteUsageCount')
     .emitAppCall(scriptHash, 'stats_getReservedFundsCount')
   const res = await doInvokeScript(net, sb.str, false)
-  const [demands, routes, funds] = parseVMStack(res.stack.slice(0, 3))
-  return { demands, routes, funds: funds / 100000000 }
+  const [demandsStack, routesItemStack, fundsStack] = res.stack.slice(0, 3)
+  return {
+    demands: Number.parseInt(reverseHex(demandsStack.value), 16) || 0,
+    routes: Number.parseInt(reverseHex(routesItemStack.value), 16) || 0,
+    funds: fixed82num(fundsStack.value) || 0
+  }
 }
 
 /**
@@ -118,10 +122,12 @@ export const getWalletState = async (net, wif, userScriptHash) => {
   const sb = new ScriptBuilder()
   sb.emitAppCall(scriptHash, 'wallet_getReservedGasBalance', [userScriptHash])
     .emitAppCall(scriptHash, 'stats_getUserReputationScore', [userScriptHash])
-  const res = await doInvokeScript(net, sb.str, false)
-  const reservedBalance = parseReservedBalance(res.stack[0])
-  const reputation = parseReputationScore(res.stack[1])
-  return { reservedBalance, reputation }
+  const res = await doInvokeScript(net, sb.str, true)
+  const [reservedBalance, reputation] = res.stack
+  return {
+    reservedBalance: reservedBalance ? reservedBalance / 100000000 : 0,
+    reputation: reputation || 0
+  }
 }
 
 /**
