@@ -12,8 +12,11 @@ export const Constants = {
   // Fees
   FEE_DEMAND_REWARD_GAS: 4,
   FEE_TRAVEL_DEPOSIT_GAS: 2,
-  // commit cefaf880c96dd5f0657ea5da55aa0d9396bd86a8 (hub-1.0)
-  HUB_SCRIPT_HASH: '0b51b02450011dd31fa2bd3d1c5c6c16533dda4e'
+  // Limits
+  MAX_GAS_ITEM_VALUE: 5497,
+  MIN_GAS_ITEM_VALUE: 0.5,
+  // commit bfd15012c48530780a413c05bb4e60acf0477e51 (hub-1.1)
+  HUB_SCRIPT_HASH: 'a66454db81e69a951bbdf50d94b26d3a45b8581e'
 }
 
 /**
