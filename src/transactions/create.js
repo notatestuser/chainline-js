@@ -1,5 +1,6 @@
 import { getScriptHashFromPublicKey } from '../wallet.js'
 import { buildScript } from '../sc/scriptBuilder.js'
+import { fixed8GasCeil } from '../utils'
 
 export const CURRENT_VERSION = 0
 export const ASSETS = {
@@ -101,18 +102,9 @@ const calculateInputs = (publicKey, balances, intents, gasCost = 0) => {
   }, {})
   // Add GAS cost in
   const D = 100000000
-  let fixed8GasCost = Math.round(gasCost * D)
+  // GAS ceil: https://git.io/vFKuc https://git.io/vFKuM
+  let fixed8GasCost = fixed8GasCeil(gasCost * D)
   if (gasCost > 0) {
-    // GAS ceil because https://git.io/vFKuc https://git.io/vFKuM
-    const remainder = fixed8GasCost % D
-    if (remainder !== 0) {
-      if (remainder > 0) {
-        fixed8GasCost = fixed8GasCost - remainder + D
-      } else {
-        fixed8GasCost = fixed8GasCost - remainder
-      }
-    }
-
     requiredAssets[ASSETS.GAS] ? requiredAssets[ASSETS.GAS] += fixed8GasCost : requiredAssets[ASSETS.GAS] = fixed8GasCost
   }
   let change = []

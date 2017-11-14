@@ -1,4 +1,29 @@
-export const ab2str = buf => { return String.fromCharCode.apply(null, new Uint8Array(buf)) }
+const D = 100000000
+
+export const gasCostCeil = gasCost => {
+  const fixed8GasCost = fixed8GasCeil(gasCost * D)
+  return Math.floor(fixed8GasCost / D)
+}
+
+export const fixed8GasCeil = fixed8GasCost => {
+  if (typeof fixed8GasCost === 'number') {
+    fixed8GasCost = Math.round(fixed8GasCost)
+  }
+  if (!fixed8GasCost) return 0
+  const remainder = fixed8GasCost % D
+  if (remainder !== 0) {
+    if (remainder > 0) {
+      fixed8GasCost = fixed8GasCost - remainder + D
+    } else {
+      fixed8GasCost = fixed8GasCost - remainder
+    }
+  }
+  return fixed8GasCost
+}
+
+export const ab2str = buf => {
+  return String.fromCharCode.apply(null, new Uint8Array(buf))
+}
 
 export const str2ab = str => {
   let bufView = new Uint8Array(str.length)
