@@ -78,9 +78,9 @@ export const invocationTx = (publicKey, balances, intents, invoke, gasCost, over
     scripts: []
   }, override)
   const attributes = []
-  const { inputs, change } = calculateInputs(publicKey, balances, intents, gasCost)
+  const { inputs, change, gasCost: calcGasCost } = calculateInputs(publicKey, balances, intents, gasCost)
   const script = typeof (invoke) === 'string' ? invoke : buildScript(invoke)
-  return Object.assign(tx, { inputs, attributes, outputs: intents.concat(change), script, gas: gasCost }, override)
+  return Object.assign(tx, { inputs, attributes, outputs: intents.concat(change), script, gas: calcGasCost }, override)
 }
 
 /**
@@ -100,8 +100,19 @@ const calculateInputs = (publicKey, balances, intents, gasCost = 0) => {
     return assets
   }, {})
   // Add GAS cost in
+  const D = 100000000
+  let fixed8GasCost = Math.round(gasCost * D)
   if (gasCost > 0) {
-    const fixed8GasCost = gasCost * 100000000
+    // GAS ceil because https://git.io/vFKuc https://git.io/vFKuM
+    const remainder = fixed8GasCost % D
+    if (remainder !== 0) {
+      if (remainder > 0) {
+        fixed8GasCost = fixed8GasCost - remainder + D
+      } else {
+        fixed8GasCost = fixed8GasCost - remainder
+      }
+    }
+
     requiredAssets[ASSETS.GAS] ? requiredAssets[ASSETS.GAS] += fixed8GasCost : requiredAssets[ASSETS.GAS] = fixed8GasCost
   }
   let change = []
@@ -131,5 +142,5 @@ const calculateInputs = (publicKey, balances, intents, gasCost = 0) => {
       return { prevHash: input.txid, prevIndex: input.index }
     })
   }).reduce((prev, curr) => prev.concat(curr), [])
-  return { inputs, change }
+  return { inputs, change, gasCost: gasCost > 0 ? fixed8GasCost / D : 0 }
 }
