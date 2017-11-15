@@ -2,7 +2,7 @@ import CryptoJS from 'crypto-js'
 import ScriptBuilder, { buildScript } from './sc/scriptBuilder.js'
 import { getAccountFromWIFKey } from './wallet'
 import { getBalance, queryRPC, doInvokeScript, parseVMStack } from './api'
-import { fixed82num, int2hex, reverseHex } from './utils'
+import { fixed82num, int2hex, hex2int, hexstring2ab, reverseHex } from './utils'
 import * as tx from './transactions/index.js'
 
 export const Constants = {
@@ -19,6 +19,13 @@ export const Constants = {
   DEMAND_SIZE: 160,
   TRAVEL_SIZE: 27,
   TIMESTAMP_SIZE: 4,
+  VALUE_SIZE: 5,
+  REP_REQUIRED_SIZE: 2,
+  CARRY_SPACE_SIZE: 1,
+  TRACKING_ID_SIZE: 9,
+  LOOKUP_KEY_SIZE: 9 + 20, // tracking id + hash160
+  HASH160_SIZE: 20,
+  INFO_BLOB_SIZE: 128,
   // State suffixes
   DEMAND_SUFFIX: '01',
   TRAVEL_SUFFIX: '02',
@@ -58,13 +65,89 @@ export const generateWalletScript = (publicKeyHex) => (
 
 // UTILS
 
+const consumeBytes = (state, bytes) => {
+  const { hex } = state
+  const consumed = hex.substr(0, bytes * 2)
+  state.hex = hex.substr(bytes * 2)
+  return consumed
+}
+
+/**
+ * Returns true if the given bytes equal the length of a serialized Demand object.
+ * @param {string} hex - The serialized object in hex
+ * @param {boolean} withTimestamp - Expect the extra timestamp on the end?
+ * @return {boolean} true if the given bytes equal the length of a serialized Demand object
+ */
+export const isDemandHex = (hex = '', withTimestamp) => {
+  const expectedSize = Constants.DEMAND_SIZE +
+    (withTimestamp ? Constants.TIMESTAMP_SIZE : 0)
+  return hex.length === expectedSize * 2
+}
+
+/**
+ * Returns true if the given bytes equal the length of a serialized Travel object.
+ * @param {string} hex - The serialized object in hex
+ * @param {boolean} withTimestamp - Expect the extra timestamp on the end?
+ * @return {boolean} true if the given bytes equal the length of a serialized Travel object
+ */
+export const isTravelHex = (hex = '', withTimestamp) => {
+  const expectedSize = Constants.TRAVEL_SIZE +
+    (withTimestamp ? Constants.TIMESTAMP_SIZE : 0)
+  return hex.length === expectedSize * 2
+}
+
+/**
+ * Parses a hex serialized Demand object.
+ * @param {string} hex - The serialized Demand object in hex
+ * @return {object|null} The parsed Demand object or null on failure
+ */
+export const parseDemandHex = (hex = '', withTimestamp) => {
+  if (!isDemandHex(hex, withTimestamp)) return null
+  // https://git.io/vF1Vm
+  const state = { hex }
+  const expiry = consumeBytes(state, Constants.TIMESTAMP_SIZE)
+  const itemValue = consumeBytes(state, Constants.VALUE_SIZE)
+  const owner = consumeBytes(state, Constants.HASH160_SIZE)
+  const repRequired = consumeBytes(state, Constants.REP_REQUIRED_SIZE)
+  const itemSize = consumeBytes(state, Constants.CARRY_SPACE_SIZE)
+  const infoBlob = consumeBytes(state, Constants.INFO_BLOB_SIZE)
+  return {
+    expiry: hex2int(expiry) || 0,
+    itemValue: fixed82num(itemValue) || 0,
+    owner,
+    repRequired: hex2int(repRequired) || 0,
+    itemSize: hex2int(itemSize) || 0,
+    infoBlob: hexstring2ab(infoBlob)
+  }
+}
+
+/**
+ * Parses a hex serialized Travel object.
+ * @param {string} hex - The serialized Travel object in hex
+ * @return {object|null} The parsed Travel object or null on failure
+ */
+export const parseTravelHex = (hex = '', withTimestamp) => {
+  if (!isTravelHex(hex, withTimestamp)) return null
+  const state = { hex }
+  const expiry = consumeBytes(state, Constants.TIMESTAMP_SIZE)
+  const repRequired = consumeBytes(state, Constants.REP_REQUIRED_SIZE)
+  const carrySpace = consumeBytes(state, Constants.CARRY_SPACE_SIZE)
+  const owner = consumeBytes(state, Constants.HASH160_SIZE)
+  return {
+    expiry: hex2int(expiry) || 0,
+    repRequired: hex2int(repRequired) || 0,
+    carrySpace: hex2int(carrySpace) || 0,
+    owner
+  }
+}
+
 /**
  * Makes a city pair hash, used by the contract for matching demands with other users.
  * @param {string} pickUpCity - The pick up city
  * @param {string} dropOffCity - The destination city
  * @return {string} The city pair hash
  */
-const makeCityPairHash = (pickUpCity, dropOffCity) =>
+export const makeCityPairHash = (pickUpCity, dropOffCity) =>
   CryptoJS.RIPEMD160(Constants.HUB_SCRIPT_HASH + pickUpCity + dropOffCity).toString()
 
 /**
@@ -189,18 +272,18 @@ export const getUserReputationScore = async (net, userScriptHash) => {
 }
 
 /**
- * Retrieves an object from the contract by ID (essentially a Storage.get)
+ * Retrieves an object from the contract by its key (essentially a Storage.get)
  * @param {string} net - 'MainNet' or 'TestNet' or custom URL
  * @param {string} id - The ID of the object, provided by either openDemand or openTravel
  * @return {string|boolean} The retrieved object, hex encoded, or false on failure
  */
-export const getObjectById = async (net, id) => {
+export const getObjectByKey = async (net, key) => {
   const scriptHash = Constants.HUB_SCRIPT_HASH
   const sb = new ScriptBuilder()
-  sb.emitAppCall(scriptHash, 'storage_get', [id])
+  sb.emitAppCall(scriptHash, 'storage_get', [key])
   const res = await doInvokeScript(net, sb.str, false)
-  const [retrieved] = parseVMStack(res.stack)
-  return retrieved || false
+  const [retrieved] = res.stack
+  return retrieved.value || false
 }
 
 /**

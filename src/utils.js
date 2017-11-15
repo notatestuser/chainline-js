@@ -39,7 +39,6 @@ export const hexstring2ab = str => {
     result.push(parseInt(str.substring(0, 2), 16))
     str = str.substring(2, str.length)
   }
-
   return result
 }
 
@@ -66,6 +65,14 @@ export const int2hex = (mNumber, reverse = false) => {
   if (reverse) hex = reverseHex(hex)
   return hex
 }
+
+/**
+ * convert hex to an integer
+ * @param {string} hex
+ * @returns {string}
+ */
+export const hex2int = (hex) =>
+  Number.parseInt(reverseHex(hex), 16)
 
 /**
  * Converts a number to a hexstring of a suitable size
