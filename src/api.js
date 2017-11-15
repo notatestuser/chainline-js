@@ -207,15 +207,31 @@ export const getAPIEndpoint = (net) => {
  * @param {string} address - Address to check.
  * @return {Promise<Balance>} Balance of address
  */
-export const getBalance = (net, address) => {
-  const apiEndpoint = getAPIEndpoint(net)
-  return axios.get(apiEndpoint + '/v2/address/balance/' + address)
-    .then((res) => {
-      return res.data
-      // const neo = res.data.NEO.balance
-      // const gas = res.data.GAS.balance
-      // return { Neo: neo, Gas: gas, unspent: { Neo: res.data.NEO.unspent, Gas: res.data.GAS.unspent } }
-    })
+export const getBalance = (net, address, useNeoScan = false) => {
+  // const apiEndpoint = getAPIEndpoint(net)
+  if (useNeoScan) {
+    let uri
+    if (net === 'TestNet') {
+      uri = `https://neoscan-testnet.io/api/test_net/v1/get_balance/${address}`
+    } else {
+      uri = `https://neoscan.io/api/main_net/v1/get_balance/${address}`
+    }
+    return axios.get(uri)
+      .then((res) => {
+        if (!res.data.balance) return { NEO: { balance: 0 }, GAS: { balance: 0 } }
+        return res.data.balance.reduce((obj, item) => {
+          obj[item.asset] = { balance: item.amount }
+          return obj
+        }, {})
+        // const neo = res.data.NEO.balance
+        // const gas = res.data.GAS.balance
+        // return { Neo: neo, Gas: gas, unspent: { Neo: res.data.NEO.unspent, Gas: res.data.GAS.unspent } }
+      })
+  } else {
+    const apiEndpoint = getAPIEndpoint(net)
+    return axios.get(apiEndpoint + '/v2/address/balance/' + address)
+      .then((res) => res.data)
+  }
 }
 
 /**
