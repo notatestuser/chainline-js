@@ -15,6 +15,13 @@ export const Constants = {
   // Limits
   MAX_GAS_ITEM_VALUE: 5497,
   MIN_GAS_ITEM_VALUE: 0.5,
+  // Sizes (bytes)
+  DEMAND_SIZE: 160,
+  TRAVEL_SIZE: 27,
+  TIMESTAMP_SIZE: 4,
+  // State suffixes
+  DEMAND_SUFFIX: '01',
+  TRAVEL_SUFFIX: '02',
   // commit bfd15012c48530780a413c05bb4e60acf0477e51 (hub-1.1)
   HUB_SCRIPT_HASH: 'a66454db81e69a951bbdf50d94b26d3a45b8581e'
 }
@@ -130,11 +137,25 @@ export const getWalletState = async (net, wif, userScriptHash) => {
   const sb = new ScriptBuilder()
   sb.emitAppCall(scriptHash, 'wallet_getReservedGasBalance', [userScriptHash])
     .emitAppCall(scriptHash, 'stats_getUserReputationScore', [userScriptHash])
-  const res = await doInvokeScript(net, sb.str, true)
-  const [reservedBalance, reputation] = res.stack
+    .emitAppCall(scriptHash, 'storage_get', [userScriptHash])
+  const res = await doInvokeScript(net, sb.str, false)
+  const [reservedBalance, reputation] = parseVMStack(res.stack.slice(0, 2))
+  const stateHex = res.stack[2].value
+  let stateLookupKey = null
+  if (stateHex) {
+    const tsSize = Constants.TIMESTAMP_SIZE * 2
+    const expiryHex = stateHex.substr(0, tsSize)
+    const typeSuffixHex =
+        stateHex.length === Constants.TRAVEL_SIZE * 2 + tsSize
+          ? Constants.TRAVEL_SUFFIX
+          : Constants.DEMAND_SUFFIX
+    const timestampHex = stateHex.substr(stateHex.length - tsSize, tsSize)
+    stateLookupKey = `${timestampHex}${expiryHex}${typeSuffixHex}`
+  }
   return {
     reservedBalance: reservedBalance ? reservedBalance / 100000000 : 0,
-    reputation: reputation || 0
+    reputation: reputation || 0,
+    stateLookupKey
   }
 }
 
