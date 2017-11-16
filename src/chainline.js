@@ -73,27 +73,29 @@ const consumeBytes = (state, bytes) => {
 }
 
 /**
- * Returns true if the given bytes equal the length of a serialized Demand object.
+ * Returns true if the given bytes equal the length of a serialized Demand object,
+ * or if it has already been deserialized by parseDemandHex.
  * @param {string} hex - The serialized object in hex
- * @param {boolean} withTimestamp - Expect the extra timestamp on the end?
  * @return {boolean} true if the given bytes equal the length of a serialized Demand object
  */
-export const isDemandHex = (hex = '', withTimestamp) => {
-  const expectedSize = Constants.DEMAND_SIZE +
-    (withTimestamp ? Constants.TIMESTAMP_SIZE : 0)
-  return hex.length === expectedSize * 2
+export const isDemandHex = (hex = '') => {
+  if (typeof hex === 'object' && hex.isDemand) return true
+  const expectedSize = Constants.DEMAND_SIZE * 2
+  const expectedSizeWithTimestamp = expectedSize + (Constants.TIMESTAMP_SIZE * 2)
+  return hex.length === expectedSize || hex.length === expectedSizeWithTimestamp
 }
 
 /**
- * Returns true if the given bytes equal the length of a serialized Travel object.
+ * Returns true if the given bytes equal the length of a serialized Travel object,
+ * or if it has already been deserialized by parseTravelHex.
  * @param {string} hex - The serialized object in hex
- * @param {boolean} withTimestamp - Expect the extra timestamp on the end?
  * @return {boolean} true if the given bytes equal the length of a serialized Travel object
  */
-export const isTravelHex = (hex = '', withTimestamp) => {
-  const expectedSize = Constants.TRAVEL_SIZE +
-    (withTimestamp ? Constants.TIMESTAMP_SIZE : 0)
-  return hex.length === expectedSize * 2
+export const isTravelHex = (hex = '') => {
+  if (typeof hex === 'object' && hex.isTravel) return true
+  const expectedSize = Constants.TRAVEL_SIZE * 2
+  const expectedSizeWithTimestamp = expectedSize + (Constants.TIMESTAMP_SIZE * 2)
+  return hex.length === expectedSize || hex.length === expectedSizeWithTimestamp
 }
 
 /**
@@ -103,7 +105,7 @@ export const isTravelHex = (hex = '', withTimestamp) => {
  */
 export const parseDemandHex = (hex = '', withTimestamp) => {
   if (!isDemandHex(hex, withTimestamp)) return null
-  // https://git.io/vF1Vm
+  if (typeof hex === 'object') return hex
   const state = { hex }
   const expiry = consumeBytes(state, Constants.TIMESTAMP_SIZE)
   const itemValue = consumeBytes(state, Constants.VALUE_SIZE)
@@ -112,7 +114,8 @@ export const parseDemandHex = (hex = '', withTimestamp) => {
   const itemSize = consumeBytes(state, Constants.CARRY_SPACE_SIZE)
   const infoBlob = consumeBytes(state, Constants.INFO_BLOB_SIZE)
   return {
-    expiry: hex2int(expiry) || 0,
+    isDemand: true,
+    expiry: new Date((hex2int(expiry) || 0) * 1000),
     itemValue: fixed82num(itemValue) || 0,
     owner,
     repRequired: hex2int(repRequired) || 0,
@@ -128,13 +131,15 @@ export const parseDemandHex = (hex = '', withTimestamp) => {
  */
 export const parseTravelHex = (hex = '', withTimestamp) => {
   if (!isTravelHex(hex, withTimestamp)) return null
+  if (typeof hex === 'object') return hex
   const state = { hex }
   const expiry = consumeBytes(state, Constants.TIMESTAMP_SIZE)
   const repRequired = consumeBytes(state, Constants.REP_REQUIRED_SIZE)
   const carrySpace = consumeBytes(state, Constants.CARRY_SPACE_SIZE)
   const owner = consumeBytes(state, Constants.HASH160_SIZE)
   return {
-    expiry: hex2int(expiry) || 0,
+    isTravel: true,
+    expiry: new Date((hex2int(expiry) || 0) * 1000),
     repRequired: hex2int(repRequired) || 0,
     carrySpace: hex2int(carrySpace) || 0,
     owner
@@ -290,7 +295,7 @@ export const getObjectByKey = async (net, key) => {
  * Retrieves the Travel object matched with a Demand and the time they were matched at.
  * @param {string} net - 'MainNet' or 'TestNet' or custom URL
  * @param {string} demand - The entire Demand object, hex encoded
- * @return {{travel: string, matchTime: number}|boolean} The matched Travel object, hex encoded, and match time (epoch secs) or false if unmatched
+ * @return {{travel: string, matchDate: Date}|null} The matched Travel object, hex encoded, and match date/time or null if unmatched
  */
 export const getDemandTravelMatch = async (net, demand) => {
   const scriptHash = Constants.HUB_SCRIPT_HASH
@@ -298,15 +303,22 @@ export const getDemandTravelMatch = async (net, demand) => {
   sb.emitAppCall(scriptHash, 'demand_getTravelMatch', [demand])
     .emitAppCall(scriptHash, 'demand_getTravelMatchedAtTime', [demand])
   const res = await doInvokeScript(net, sb.str, false)
-  const [travel, matchTime] = parseVMStack(res.stack)
-  return travel ? { travel, matchTime } : false
+  const [matchTime] = parseVMStack(res.stack.slice(1, 2))
+  if (matchTime) {
+    const travel = res.stack[0].value
+    return travel ? {
+      travel: parseTravelHex(travel),
+      matchDate: new Date(matchTime * 1000)
+    } : false
+  }
+  return false
 }
 
 /**
  * Retrieves the Demand object matched with a Travel and the time they were matched at.
  * @param {string} net - 'MainNet' or 'TestNet' or custom URL
  * @param {string} travel - The entire Travel object, hex encoded
- * @return {{demand: string, matchTime: number}|boolean} The matched Demand object, hex encoded, and match time (epoch secs) or false if unmatched
+ * @return {{demand: string, matchDate: Date}|boolean} The matched Demand object, hex encoded, and match date/time or null if unmatched
  */
 export const getTravelDemandMatch = async (net, travel) => {
   const scriptHash = Constants.HUB_SCRIPT_HASH
@@ -314,8 +326,15 @@ export const getTravelDemandMatch = async (net, travel) => {
   sb.emitAppCall(scriptHash, 'travel_getDemandMatch', [travel])
     .emitAppCall(scriptHash, 'travel_getDemandMatchedAtTime', [travel])
   const res = await doInvokeScript(net, sb.str, false)
-  const [demand, matchTime] = parseVMStack(res.stack)
-  return demand ? { demand, matchTime } : false
+  const [matchTime] = parseVMStack(res.stack.slice(1, 2))
+  if (matchTime) {
+    const demand = res.stack[0].value
+    return demand ? {
+      demand: parseDemandHex(demand),
+      matchDate: new Date(matchTime * 1000)
+    } : false
+  }
+  return false
 }
 
 // BLOCKCHAIN INVOKES
