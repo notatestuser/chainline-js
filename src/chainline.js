@@ -443,3 +443,38 @@ export const openTravel = async (net, wif, {
   }
   return { result: false }
 }
+
+/**
+ * Completes a Chain Line transaction by setting the TX hash of the courier's refund in the contract.
+ * @param {string} net - 'MainNet' or 'TestNet' or custom URL
+ * @param {string} wif - The wallet's WIF key
+ * @param {{recipientHash: string, value: number, txHash: number}}
+ * @param {number} gas - The amount of GAS to send in the transaction's inputs (if applicable)
+ * @return {{result: boolean, gasConsumed?: number, success?: boolean}} The result and return value
+ */
+export const setFundsPaidToRecipientTxHash = async (net, wif, { recipientHash, value, txHash }, gas = 0) => {
+  const account = getAccountFromWIFKey(wif)
+  const invoke = {
+    scriptHash: Constants.HUB_SCRIPT_HASH,
+    operation: 'wallet_setFundsPaidToRecipientTxHash',
+    args: [
+      // owner: ScriptHash
+      // already little endian
+      account.programHash,
+      // publicKey
+      account.publicKeyEncoded,
+      // all the rest
+      recipientHash, value, txHash
+    ]
+  }
+  const script = buildScript(invoke)
+  const balances = await getBalance(net, account.address)
+  const intents = [
+    // a non-zero value in outputs makes tx validation go through
+    { assetId: tx.ASSETS['GAS'], value: 0.001, scriptHash: account.programHash }
+  ]
+  const unsignedTx = tx.create.invocation(account.publicKeyEncoded, balances, intents, script, gas, { version: 1 })
+  const signedTx = tx.signTransaction(unsignedTx, account.privateKey)
+  const hexTx = tx.serializeTransaction(signedTx)
+  return queryRPC(net, 'sendrawtransaction', [hexTx], 4)
+}
