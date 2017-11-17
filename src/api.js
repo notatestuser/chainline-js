@@ -211,10 +211,10 @@ export const getBalance = (net, address, useNeoScan = false) => {
   // const apiEndpoint = getAPIEndpoint(net)
   if (useNeoScan) {
     let uri
-    if (net === 'TestNet') {
-      uri = `https://neoscan-testnet.io/api/test_net/v1/get_balance/${address}`
-    } else {
+    if (net === 'MainNet') {
       uri = `https://neoscan.io/api/main_net/v1/get_balance/${address}`
+    } else {
+      uri = `https://neoscan-testnet.io/api/test_net/v1/get_balance/${address}`
     }
     return axios.get(uri)
       .then((res) => {
