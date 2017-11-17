@@ -2,7 +2,7 @@ import CryptoJS from 'crypto-js'
 import ScriptBuilder, { buildScript } from './sc/scriptBuilder.js'
 import { getAccountFromWIFKey } from './wallet'
 import { getBalance, queryRPC, doInvokeScript, parseVMStack } from './api'
-import { fixed82num, int2hex, hex2int, hexstring2ab, reverseHex } from './utils'
+import { fixed82num, int2hex, hex2int, hexstring2a, reverseHex } from './utils'
 import * as tx from './transactions/index.js'
 
 export const Constants = {
@@ -120,7 +120,7 @@ export const parseDemandHex = (hex = '', withTimestamp) => {
     owner,
     repRequired: hex2int(repRequired) || 0,
     itemSize: hex2int(itemSize) || 0,
-    infoBlob: hexstring2ab(infoBlob)
+    infoBlob: hexstring2a(infoBlob)
   }
 }
 

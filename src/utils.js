@@ -33,6 +33,15 @@ export const str2ab = str => {
   return bufView
 }
 
+export const hexstring2a = hexx => {
+  const hex = hexx.toString()
+  let str = ''
+  for (var i = 0; i < hex.length; i += 2) {
+    str += String.fromCharCode(parseInt(hex.substr(i, 2), 16))
+  }
+  return str
+}
+
 export const hexstring2ab = str => {
   let result = []
   while (str.length >= 2) {
