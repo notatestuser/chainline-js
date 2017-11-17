@@ -304,11 +304,12 @@ export const getDemandTravelMatch = async (net, demand) => {
     .emitAppCall(scriptHash, 'demand_getTravelMatchedAtTime', [demand])
   const res = await doInvokeScript(net, sb.str, false)
   const [matchTime] = parseVMStack(res.stack.slice(1, 2))
+  const matchTimeInt = Number.parseInt(reverseHex(res.stack[1].value), 16)
   if (matchTime) {
     const travel = res.stack[0].value
     return travel ? {
       travel: parseTravelHex(travel),
-      matchDate: new Date(matchTime * 1000)
+      matchDate: new Date(matchTimeInt * 1000)
     } : false
   }
   return false
@@ -327,11 +328,12 @@ export const getTravelDemandMatch = async (net, travel) => {
     .emitAppCall(scriptHash, 'travel_getDemandMatchedAtTime', [travel])
   const res = await doInvokeScript(net, sb.str, false)
   const [matchTime] = parseVMStack(res.stack.slice(1, 2))
+  const matchTimeInt = Number.parseInt(reverseHex(res.stack[1].value), 16)
   if (matchTime) {
     const demand = res.stack[0].value
     return demand ? {
       demand: parseDemandHex(demand),
-      matchDate: new Date(matchTime * 1000)
+      matchDate: new Date(matchTimeInt * 1000)
     } : false
   }
   return false
