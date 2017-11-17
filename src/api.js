@@ -273,7 +273,7 @@ export const getRPCEndpoint = (net) => {
   if (net !== 'TestNet' && net !== 'MainNet') return Promise.resolve(net)
   // const apiEndpoint = getAPIEndpoint(net)
   // use a node with https
-  return 'https://seed3.neo.org:20331'
+  return Promise.resolve('https://seed3.neo.org:20331')
 }
 
 /**
