@@ -197,7 +197,9 @@ export const getAPIEndpoint = (net) => {
   if (net === 'MainNet') {
     return 'http://api.wallet.cityofzion.io'
   } else {
-    return 'http://testnet-api.wallet.cityofzion.io'
+    return window.location.host === 'chainline.co'
+        ? '/neon-testnet-api'
+        : 'http://testnet-api.wallet.cityofzion.io'
   }
 }
 
