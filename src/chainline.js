@@ -227,7 +227,7 @@ export const getWalletState = async (net, wif, userScriptHash) => {
     .emitAppCall(scriptHash, 'stats_getUserReputationScore', [userScriptHash])
     .emitAppCall(scriptHash, 'storage_get', [userScriptHash])
   const res = await doInvokeScript(net, sb.str, false)
-  const [reservedBalance, reputation] = parseVMStack(res.stack.slice(0, 2))
+  const [reservedBalance] = parseVMStack(res.stack.slice(0, 1))
   const stateHex = res.stack[2].value
   let stateLookupKey = null
   if (stateHex) {
@@ -242,7 +242,7 @@ export const getWalletState = async (net, wif, userScriptHash) => {
   }
   return {
     reservedBalance: reservedBalance ? reservedBalance / 100000000 : 0,
-    reputation: reputation || 0,
+    reputation: hex2int(res.stack[1].value) || 0,
     stateLookupKey
   }
 }
