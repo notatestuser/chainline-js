@@ -1,4 +1,4 @@
-import { num2fixed8, fixed82num, num2VarInt, num2hexstring, int2hex } from '../utils.js'
+import { StringStream, num2fixed8, fixed82num, num2VarInt } from '../utils.js'
 import { serializeTransactionInput, deserializeTransactionInput } from './components.js'
 
 /**
@@ -51,21 +51,7 @@ const deserializeInvocationExclusive = (ss) => {
 
 const serializeInvocationExclusive = (tx) => {
   if (tx.type !== 0xd1) throw new Error()
-  // let out = num2VarInt(tx.script.length / 2)
-  // todo: hacky fix for a problem with scripts between 253 and 255 bytes
-  let out
-  const num = tx.script.length / 2
-  if (num < 0xfd) {
-    out = num2hexstring(num)
-  } else if (num <= 0xffff) {
-    if (num >= 253 && num < 256) {
-      out = 'fd' + int2hex(num) + '00'
-    } else {
-      out = 'fd' + num2hexstring(num, 4)
-    }
-  } else {
-    out = num2VarInt(num)
-  }
+  let out = num2VarInt(tx.script.length / 2)
   out += tx.script
   if (tx.version >= 1) out += num2fixed8(tx.gas)
   return out
