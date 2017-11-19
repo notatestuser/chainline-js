@@ -1,33 +1,34 @@
 ![Chain Line](http://d.pr/f/Oo2c4f+)
 
-Get anything to anywhere, powered by the blockchain. Chain Line uses a network of untrusted peers to get products and valuable items to their destinations with near-zero risk.
+**Get anything anywhere, powered by the blockchain.** Chain Line is a peer-to-peer shipping network that gets products and valuable items to their destinations with near-zero risk.
 
-Behind Chain Line is a bold vision: to introduce a modern peer-to-peer courier platform to address the needs of shipping companies and individuals alike, powered entirely by a smart contract.
+It works by moving an item's cost between peers as it travels through the system. A central "hub" contract controls "reserved funds" in Chain Line [smart wallets](https://github.com/notatestuser/chainline-contracts-kt/wiki/Smart-Wallet) running custom verification scripts. Chain Line features a user reputation system and relies on no external systems, operating entirely on the blockchain.
 
-It works by re-assigning an item's cost between peers as it travels through the system. A central "hub" contract controls "reserved funds" in Chain Line user wallets running custom verification scripts. Chain Line features a user reputation system and relies on no external "oracle" systems, operating entirely on the blockchain.
-
+#### Learn more:&nbsp;&nbsp; [Wiki](https://github.com/notatestuser/chainline-contracts-kt/wiki) &nbsp; [User Guide](https://github.com/notatestuser/chainline-webapp/wiki/Web-App-User-Guide) &nbsp; [Intro Video](https://f001.backblazeb2.com/file/chainline-assets/explainer.mp4)
 ---
 
 This is a modified version of the [Neon Wallet JS SDK](https://github.com/cityofzion/neon-js) for the Chain Line web app.
 
+This program uses the following open source components created by City of Zion (CoZ) under the MIT License agreement. Chain Line would not have been possible without their generous contributions:
 
-## Quick Start
+* Project: [neon-js](https://github.com/CityOfZion/neon-js)
+* Developers: [City of Zion (CoZ)](https://github.com/CityOfZion) ([Contributors](https://github.com/CityOfZion/neon-js/graphs/contributors))
 
-Take a look at the tests to find examples for all API functions.
+## To do
 
-TODO: UPDATE
+* Fix tests broken due to the custom verify script :)
 
-### To run tests
+## To run tests
 ```
 npm run test
 ```
 
-### To build to /dist:
+## To build to /dist:
 ```
 npm run build
 ```
 
-### To import
+## To import
 ```
 npm install --save git+https://github.com/CityOfZion/neon-js.git
 ```
